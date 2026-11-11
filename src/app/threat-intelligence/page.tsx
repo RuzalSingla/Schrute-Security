@@ -43,6 +43,7 @@ export default function ThreatIntelligence() {
           <p className="training-hero-quip">Because “I declare security!” is not a cybersecurity strategy.</p>
           <Link className="btn" href="#training-program">Enter the training program <ArrowRight size={16}/></Link>
         </div>
+        <div className="training-hero-illustration"><Image src="/images/dunder-mifflin-computer-logo.png" alt="Dunder Mifflin office computer" fill priority sizes="(max-width: 760px) 150px, 36vw" /></div>
         <div className="training-memo-stamp" aria-hidden="true"><ShieldCheck size={16}/> INTERNAL / SS-INTEL</div>
       </div>
     </section>
