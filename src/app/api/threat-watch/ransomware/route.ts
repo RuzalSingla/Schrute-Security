@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const apiBase = (process.env.RANSOMWHERE_API_BASE || 'https://ransomwhere.org/api').replace(/\/$/, '');
-const fallbackVictimsUrl = 'https://api.ransomware.live/v2/recentvictims';
+const ransomwareLiveBase = 'https://api.ransomware.live/v2';
+const fallbackVictimsUrl = `${ransomwareLiveBase}/recentvictims`;
 const victimSchema = z.object({
   victim: z.string().min(1),
   group: z.string().nullable().optional(),
@@ -22,6 +23,7 @@ const statsSchema = z.object({
   lastUpdate: z.string().optional(),
   source: z.string().optional(),
 }).passthrough();
+const fallbackStatsSchema = z.object({ victims: z.number(), groups: z.number() }).passthrough();
 
 async function getJson(url: string, revalidate: number, forceRefresh: boolean, timeoutMs = 4_000) {
   const response = await fetch(url, {
@@ -42,12 +44,30 @@ async function getVictims(forceRefresh: boolean) {
   }
 }
 
+async function getStats(forceRefresh: boolean) {
+  const rawStats = await getJson(`${apiBase}/stats`, 300, forceRefresh).catch(error => {
+    console.warn('[threat-watch] Ransomwhere stats unavailable; trying Ransomware.live info.', error);
+    return null;
+  });
+  const parsedStats = statsSchema.safeParse(rawStats);
+  if (parsedStats.success && (parsedStats.data.totalVictims !== undefined || parsedStats.data.totalGroups !== undefined)) return parsedStats.data;
+
+  try {
+    const rawInfo = await getJson(`${ransomwareLiveBase}/info`, 300, forceRefresh, 4_500);
+    const info = fallbackStatsSchema.safeParse(rawInfo);
+    if (info.success) return { totalVictims: info.data.victims, totalGroups: info.data.groups, source: 'ransomware.live' };
+  } catch (error) {
+    console.warn('[threat-watch] Ransomware.live info endpoint unavailable.', error);
+  }
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   const forceRefresh = request.nextUrl.searchParams.has('refresh');
   try {
     const [rawVictims, rawStats] = await Promise.all([
       getVictims(forceRefresh),
-      getJson(`${apiBase}/stats`, 300, forceRefresh).catch(() => null),
+      getStats(forceRefresh),
     ]);
 
     const rows = Array.isArray(rawVictims) ? rawVictims :
@@ -72,8 +92,7 @@ export async function GET(request: NextRequest) {
     });
     if (rows.length && !victims.length) throw new Error('The ransomware source data could not be validated.');
 
-    const parsedStats = statsSchema.safeParse(rawStats);
-    const stats = parsedStats.success ? parsedStats.data : null;
+    const stats = rawStats;
     return NextResponse.json({
       source: { name: 'Ransomwhere.org · sourced from Ransomware.live', url: 'https://ransomwhere.org/developers', retrievedAt: new Date().toISOString() },
       stats,
