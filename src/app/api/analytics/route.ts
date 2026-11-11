@@ -1,0 +1,2 @@
+import {NextRequest,NextResponse} from 'next/server';import {incidents,filterIncidents,summarizeIncidents} from '@/lib/data';
+export async function GET(req:NextRequest){const p=req.nextUrl.searchParams;const rows=filterIncidents(incidents,{category:p.get('category')||undefined,country:p.get('country')||undefined,region:p.get('region')||undefined,startDate:p.get('startDate')||undefined,endDate:p.get('endDate')||undefined});return NextResponse.json({...summarizeIncidents(rows),note:'Counts are collected demo records, not actual global attacks.'});}

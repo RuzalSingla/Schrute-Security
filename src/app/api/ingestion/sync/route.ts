@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {syncThreatSources} from '@/lib/ingestion';
+export async function POST(req:NextRequest){const expected=process.env.INGESTION_SECRET;if(!expected)return NextResponse.json({error:'Ingestion is not configured. Set INGESTION_SECRET on the server.'},{status:503});if(req.headers.get('authorization')!=='Bearer '+expected)return NextResponse.json({error:'Unauthorized'},{status:401});try{const result=await syncThreatSources();return NextResponse.json(result,{status:result.results.every(x=>x.status==='failed')?502:200});}catch{return NextResponse.json({error:'Ingestion could not start. Check server database configuration.'},{status:503});}}
