@@ -3,33 +3,25 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Award, BookOpen, Clock3, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Coffee, FileText, FolderOpen, Paperclip, ShieldCheck, X } from 'lucide-react';
 import { PageTitle } from '@/components/chrome';
-import { BADGES, currentRank, EMPTY_PROGRESS, loadProgress, saveProgress, trainingModules, type TrainingProgress } from '@/lib/training';
+import { EMPTY_PROGRESS, loadProgress, saveProgress, trainingModules, type TrainingProgress, type TrainingModule } from '@/lib/training';
+
+const departments = ['Foundational Training', 'Technical Training', 'Special Investigations'] as const;
 
 export default function ThreatIntelligence() {
   const [progress, setProgress] = useState<TrainingProgress>(EMPTY_PROGRESS);
+  const [selectedFile, setSelectedFile] = useState<TrainingModule | null>(null);
   const [ready, setReady] = useState(false);
 
+  useEffect(() => { setProgress(loadProgress()); setReady(true); }, []);
+  useEffect(() => { if (ready) saveProgress(progress); }, [progress, ready]);
   useEffect(() => {
-    setProgress(loadProgress());
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (ready) saveProgress(progress);
-  }, [progress, ready]);
-
-  const rank = currentRank(progress.xp);
-  const percentage = rank.next ? Math.min(100, ((progress.xp - rank.current.xp) / (rank.next.xp - rank.current.xp)) * 100) : 100;
-  const earned = BADGES.filter((badge) => {
-    if (badge.id === 'first-lesson') return progress.completedLessons.length > 0;
-    if (badge.id === 'phishing') return progress.completedModules.includes('jim-phishing');
-    if (badge.id === 'accounts') return progress.completedModules.includes('angela-access');
-    if (badge.id === 'backup') return progress.completedModules.includes('pam-privacy');
-    if (badge.id === 'threat') return progress.completedModules.includes('kevin-threat-feed');
-    return progress.completedModules.length === trainingModules.length;
-  });
+    if (!selectedFile) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelectedFile(null); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedFile]);
 
   return <main className="training-page">
     <section className="training-hero">
@@ -41,46 +33,43 @@ export default function ThreatIntelligence() {
           <h2>Fact: The internet is a dangerous place.</h2>
           <p>Welcome to the branch&apos;s Cybersecurity Intelligence Division. Learn how threats operate, investigate suspicious activity, and keep your digital workplace safe.</p>
           <p className="training-hero-quip">Because “I declare security!” is not a cybersecurity strategy.</p>
-          <Link className="btn" href="#training-program">Enter the training program <ArrowRight size={16}/></Link>
+          <a className="btn" href="#training-archive">Enter the training archive <ArrowRight size={16}/></a>
         </div>
         <div className="training-hero-illustration"><Image src="/images/dunder-mifflin-computer-logo.png" alt="Dunder Mifflin office computer" fill priority sizes="(max-width: 760px) 150px, 36vw" /></div>
         <div className="training-memo-stamp" aria-hidden="true"><ShieldCheck size={16}/> INTERNAL / SS-INTEL</div>
       </div>
     </section>
 
-    <section className="section training-section" id="training-program">
+    <section className="section training-section" id="training-archive">
       <div className="wrap">
-        <PageTitle kicker="Branch employee learning record" title="The Cybersecurity Training Program" description="Every employee has a role in keeping the branch secure. Dwight is watching." />
+        <PageTitle kicker="Dunder Mifflin / Scranton Branch" title="The Branch Training Archive" description="Eight files. One safer branch. Every employee has a role in keeping the branch secure. Dwight is watching." />
 
-        <section className="training-dashboard paper-card" aria-label="Employee training progress">
-          <div className="training-rank-icon"><Award size={27}/></div>
-          <div className="training-rank-copy"><div className="eyebrow">Schrute Security / Employee ID SS-001</div><span className="training-rank-label">Current rank</span><strong>{rank.current.name}</strong><p>“Dwight has not approved your promotion yet.”</p></div>
-          <div className="training-xp-block"><div className="training-xp-numbers"><b>{progress.xp} XP</b><span>{rank.next ? `${rank.next.xp} XP to ${rank.next.name}` : 'Top rank reached'}</span></div><div className="training-progress-track" role="progressbar" aria-label="Progress toward next rank" aria-valuenow={Math.round(percentage)} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${percentage}%` }}/></div><div className="training-stats"><span><b>{progress.completedModules.length}</b> / 8 modules</span><span><b>{progress.completedLessons.length}</b> lessons complete</span></div></div>
-        </section>
-
-        <div className="training-module-heading"><div><span className="eyebrow">Choose your next lesson</span><h2>Eight files. One safer branch.</h2></div><span className="training-count"><BookOpen size={15}/> {progress.completedModules.length} of 8 complete</span></div>
-        <div className="training-module-grid">
-          {trainingModules.map((module) => {
-            const done = progress.completedModules.includes(module.id);
-            const completed = module.lessons.filter((_, index) => progress.completedLessons.includes(`${module.id}:${index}`)).length;
-            const percent = Math.round((completed / module.lessons.length) * 100);
-            return <article className="training-module paper-card" key={module.id}>
-              <div className="training-module-photo"><Image src={module.image} alt={`${module.character}, associated with ${module.title}`} fill sizes="(max-width: 700px) 100vw, (max-width: 1050px) 50vw, 25vw" loading="lazy"/><span className="training-module-number">MODULE {module.number}</span><span className={`training-level training-level-${module.level.toLowerCase()}`}>{module.level}</span></div>
-              <div className="training-module-content"><div className="training-character">{module.character}&apos;s file</div><h3>{module.title}</h3><p>{module.description}</p>
-                <div className="training-topics">{module.topics.slice(0, 3).map((topic) => <span key={topic}>{topic}</span>)}</div>
-                <div className="training-module-meta"><span><BookOpen size={14}/> {module.lessons.length} lessons</span><span><Clock3 size={14}/> {module.minutes} min</span></div>
-                <div className="training-card-progress"><div><span>File progress</span><b>{done ? 'Complete' : `${percent}%`}</b></div><div className="training-progress-track"><span style={{ width: `${done ? 100 : percent}%` }}/></div></div>
-                <Link className="training-start-link" href={`/threat-intelligence/module/${module.id}`}>{done ? 'Review module' : completed ? 'Continue learning' : 'Start learning'} <ArrowRight size={16}/></Link>
+        <section className="archive-desk" aria-label="Cybersecurity training file archive">
+          <div className="archive-desk-header"><div><span className="eyebrow">Cybersecurity Division / File Cabinet B</span><p>Authorized employees only · Select a folder to review its document</p></div><div className="archive-desk-tools" aria-hidden="true"><span className="archive-sticky">Dwight says:<br/>Read the policy.</span><span className="archive-coffee"><Coffee size={25}/></span><Paperclip size={25}/></div></div>
+          <div className="archive-cabinet">
+            {departments.map((department) => <section className={`archive-department archive-department-${department.startsWith('Foundational') ? 'foundational' : department.startsWith('Technical') ? 'technical' : 'special'}`} key={department}>
+              <div className="archive-department-heading"><span className="archive-category-tab"/><div><span className="eyebrow">Department file / {String(departments.indexOf(department) + 1).padStart(2, '0')}</span><h2>{department}</h2></div><span className="archive-file-count">{trainingModules.filter((item) => item.department === department).length} files</span></div>
+              <div className="archive-folder-list">
+                {trainingModules.filter((item) => item.department === department).map((module) => {
+                  const done = progress.completedModules.includes(module.id);
+                  const completed = module.lessons.filter((_, i) => progress.completedLessons.includes(`${module.id}:${i}`)).length;
+                  return <button type="button" className="archive-folder" key={module.id} onClick={() => setSelectedFile(module)} aria-label={`Open preview for file ${module.number}: ${module.title}`}>
+                    <span className="archive-folder-tab">FILE {module.number}</span><span className="archive-folder-icon"><FolderOpen size={24}/></span>
+                    <span className="archive-folder-main"><strong>{module.title}</strong><small>{module.description}</small></span>
+                    <span className="archive-folder-meta"><span>{module.level}</span><span>{completed}/{module.lessons.length} lessons</span></span>
+                    {done&&<span className="archive-reviewed" aria-label="Reviewed">REVIEWED</span>}
+                  </button>;
+                })}
               </div>
-            </article>;
-          })}
-        </div>
-
-        <section className="training-bottom-grid">
-          <div className="paper-card training-badges"><div className="eyebrow">Performance recognition</div><h2><Sparkles size={19}/> Employee badges</h2><p>Earned locally as you complete training milestones.</p><div className="training-badge-list">{BADGES.map((badge) => {const unlocked = earned.some((item) => item.id === badge.id);return <div className={`training-badge ${unlocked ? 'is-earned' : ''}`} key={badge.id}><Award size={20}/><span><b>{badge.name}</b><small>{badge.detail}</small></span><span className="training-badge-state">{unlocked ? 'Earned' : 'Locked'}</span></div>;})}</div></div>
-          <aside className="training-threat-desk"><div className="eyebrow">From the threat desk</div><h2>Real-world threats. Real lessons.</h2><p>Review the separate public threat feed, then return here to learn the defensive concepts behind it. Live activity is labeled by source and what it can verify.</p><Link href="/threat-watch" className="btn secondary">Open Global Threat Watch <ArrowRight size={15}/></Link><p className="training-sim-note">Training scenarios on this page are educational simulations, not live incident reports.</p></aside>
+            </section>)}
+          </div>
+          <p className="archive-footer-note">“Please return all training files to their designated cabinet. Dwight is checking.”</p>
         </section>
+
+        <aside className="training-threat-desk"><div className="eyebrow">From the threat desk</div><h2>Real-world threats. Real lessons.</h2><p>Review the separate public threat feed, then return here to learn the defensive concepts behind it. Live activity is labeled by source and what it can verify.</p><Link href="/threat-watch" className="btn secondary">Open Global Threat Watch <ArrowRight size={15}/></Link><p className="training-sim-note">Training scenarios in these files are educational examples, not live incident reports.</p></aside>
       </div>
     </section>
+
+    {selectedFile&&<div className="archive-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedFile(null); }}><section className="archive-preview" role="dialog" aria-modal="true" aria-labelledby="archive-preview-title"><button className="archive-preview-close" onClick={() => setSelectedFile(null)} aria-label="Close document preview"><X size={20}/></button><div className="archive-preview-brand"><span className="eyebrow">Schrute Security · Cybersecurity Intelligence Division</span><span className="archive-preview-file">FILE {selectedFile.number}</span></div><div className="archive-preview-heading"><span className="tag">TRAINING DOCUMENT</span><h2 id="archive-preview-title">{selectedFile.title}</h2><p>{selectedFile.description}</p></div><div className="archive-preview-meta"><p><b>Assigned department:</b> Cybersecurity Intelligence</p><p><b>Document owner:</b> {selectedFile.character}</p><p><b>Classification:</b> Employee Training</p><p><b>Difficulty:</b> {selectedFile.level}</p><p><b>Estimated reading time:</b> {selectedFile.minutes} minutes</p></div><p className="archive-preview-note"><b>{selectedFile.character}&apos;s note</b><br/><i>“{selectedFile.characterNote}”</i></p><div className="archive-preview-contents"><h3><FileText size={16}/> Document contents</h3><ol>{selectedFile.lessons.map((item) => <li key={item.title}>{item.title}</li>)}</ol><div className="archive-preview-objectives"><b>Training objectives</b><div>{selectedFile.topics.map((topic) => <span className="tag" key={topic}>{topic}</span>)}</div></div></div><Link className="btn archive-open-document" href={`/threat-intelligence/module/${selectedFile.id}`}><span>OPEN TRAINING DOCUMENT</span><small>Begin lesson 01</small></Link></section></div>}
   </main>;
 }
