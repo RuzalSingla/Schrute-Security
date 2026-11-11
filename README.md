@@ -1,4 +1,5 @@
 # Schrute Security
+https://schrute-security.vercel.app/
 
 Schrute Security is a Dunder Mifflin inspired cybersecurity learning app. It includes five feature areas, local simulations, browser-only AES-GCM tools, and a Global Threat Watch backed by the CISA Known Exploited Vulnerabilities catalog. Classroom scenarios remain clearly labeled as fictional demo data.
 
