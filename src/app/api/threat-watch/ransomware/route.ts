@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const apiBase = (process.env.RANSOMWHERE_API_BASE || 'https://ransomwhere.org/api').replace(/\/$/, '');
+const fallbackVictimsUrl = 'https://api.ransomware.live/v2/recentvictims';
 const victimSchema = z.object({
   victim: z.string().min(1),
   group: z.string().nullable().optional(),
@@ -22,21 +23,30 @@ const statsSchema = z.object({
   source: z.string().optional(),
 }).passthrough();
 
-async function getJson(url: string, revalidate: number, forceRefresh: boolean) {
+async function getJson(url: string, revalidate: number, forceRefresh: boolean, timeoutMs = 4_000) {
   const response = await fetch(url, {
     headers: { accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(timeoutMs),
     ...(forceRefresh ? { cache: 'no-store' as const } : { next: { revalidate } }),
   });
   if (!response.ok) throw new Error(`Threat source returned HTTP ${response.status}`);
   return response.json() as Promise<unknown>;
 }
 
+async function getVictims(forceRefresh: boolean) {
+  try {
+    return await getJson(`${apiBase}/victims`, 120, forceRefresh, 3_500);
+  } catch (primaryError) {
+    console.warn('[threat-watch] Ransomwhere proxy unavailable; trying Ransomware.live directly.', primaryError);
+    return getJson(fallbackVictimsUrl, 120, forceRefresh, 4_500);
+  }
+}
+
 export async function GET(request: NextRequest) {
   const forceRefresh = request.nextUrl.searchParams.has('refresh');
   try {
     const [rawVictims, rawStats] = await Promise.all([
-      getJson(`${apiBase}/victims`, 120, forceRefresh),
+      getVictims(forceRefresh),
       getJson(`${apiBase}/stats`, 300, forceRefresh).catch(() => null),
     ]);
 
@@ -71,6 +81,7 @@ export async function GET(request: NextRequest) {
       note: 'These entries are ransomware-group claims published on leak sites. They are unverified and may be incomplete, repeated, or inaccurate. Country markers show the reported victim country at approximate country-centre coordinates; they are not exact incident locations or attacker locations.',
     }, { headers: { 'Cache-Control': forceRefresh ? 'no-store' : 'public, s-maxage=120, stale-while-revalidate=600' } });
   } catch (error) {
+    console.error('[threat-watch] Could not load ransomware claims from either source.', error);
     const message = error instanceof Error && error.message.includes('unexpected response') ? error.message : 'The ransomware activity feed is temporarily unavailable. Please try again.';
     return NextResponse.json({ error: message }, { status: 502, headers: { 'Cache-Control': 'no-store' } });
   }
