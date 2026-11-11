@@ -65,7 +65,8 @@ export default function ThreatWatch() {
       const response = await fetch(fresh ? `/api/threat-watch/ransomware?refresh=${Date.now()}` : '/api/threat-watch/ransomware', { cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Ransomware reports could not be loaded.');
-      setRansomwareFeed(payload as RansomwareFeed);
+      const freshFeed = payload as RansomwareFeed;
+      setRansomwareFeed(previous => ({ ...freshFeed, stats: freshFeed.stats ?? previous?.stats ?? null }));
     } catch (caught) {
       setRansomwareError(caught instanceof Error ? caught.message : 'Ransomware reports could not be loaded.');
     } finally {
@@ -113,6 +114,7 @@ export default function ThreatWatch() {
     for (const victim of ransomwareFeed?.victims ?? []) if (victim.country) claimsByCountry.set(victim.country, [...(claimsByCountry.get(victim.country) || []), victim]);
     return [...claimsByCountry].map(([country, claims]) => ({ country, count: claims.length, claims: claims.slice(0, 4) })).sort((a, b) => b.count - a.count);
   }, [ransomwareFeed]);
+  const recentGroupCount = useMemo(() => new Set((ransomwareFeed?.victims ?? []).map(item => item.group).filter(group => group && group !== 'Unattributed')).size, [ransomwareFeed]);
   const sectors = useMemo(() => [...new Set((ransomwareFeed?.victims ?? []).map(item => item.sector).filter(item => item && item !== 'Not specified'))].sort((a, b) => a.localeCompare(b)), [ransomwareFeed]);
   const visibleVictims = useMemo(() => (ransomwareFeed?.victims ?? []).filter(item => {
     const text = `${item.victim} ${item.group} ${item.sector} ${item.country || ''}`.toLowerCase();
@@ -136,8 +138,8 @@ export default function ThreatWatch() {
       {ransomwareError && <div role="alert" className="threat-error"><AlertTriangle size={18}/><span>{ransomwareError}</span><button type="button" onClick={() => void loadRansomwareFeed()}>Retry</button></div>}
       {ransomwareLoading ? <div role="status" className="threat-loading paper-card"><LoaderCircle size={22} className="threat-spin"/> Loading recent ransomware claims…</div> : ransomwareFeed && <>
         <div className="threat-metrics-grid ransomware-metrics">
-          <Metric label="Tracked victim claims" value={ransomwareFeed.stats?.totalVictims?.toLocaleString() ?? '—'} detail="Source-reported cumulative total" icon={Activity}/>
-          <Metric label="Tracked groups" value={ransomwareFeed.stats?.totalGroups?.toLocaleString() ?? '—'} detail="Groups in the source dataset" icon={ShieldCheck}/>
+          <Metric label="Tracked victim claims" value={(ransomwareFeed.stats?.totalVictims ?? ransomwareFeed.victims.length).toLocaleString()} detail={ransomwareFeed.stats?.totalVictims !== undefined ? 'Source-reported cumulative total' : 'Recent feed size; cumulative total unavailable'} icon={Activity}/>
+          <Metric label="Tracked groups" value={(ransomwareFeed.stats?.totalGroups ?? recentGroupCount).toLocaleString()} detail={ransomwareFeed.stats?.totalGroups !== undefined ? 'Groups in the source dataset' : 'Distinct groups in the recent feed'} icon={ShieldCheck}/>
           <Metric label="Recent claims loaded" value={ransomwareFeed.victims.length.toLocaleString()} detail="Latest entries in this feed" icon={CalendarClock}/>
           <Metric label="Countries in recent feed" value={countryCounts.length.toLocaleString()} detail="Country is missing from some claims" icon={AlertTriangle}/>
         </div>
