@@ -3,6 +3,22 @@ https://schrute-security.vercel.app/
 
 Schrute Security is a Dunder Mifflin inspired cybersecurity learning app. It includes five feature areas, local simulations, browser-only AES-GCM tools, and a Global Threat Watch backed by the CISA Known Exploited Vulnerabilities catalog. Classroom scenarios remain clearly labeled as fictional demo data.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><strong>Homepage</strong><br><img src="docs/screenshots/homepage.png" alt="Schrute Security homepage" width="100%"></td>
+    <td align="center"><strong>Our mission</strong><br><img src="docs/screenshots/mission.png" alt="Our mission section" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>What we offer</strong><br><img src="docs/screenshots/features.png" alt="Four cybersecurity features" width="100%"></td>
+    <td align="center"><strong>Scranton’s rules</strong><br><img src="docs/screenshots/scrantons-rules.png" alt="Scranton's cybersecurity rules" width="100%"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><strong>Global Threat Watch</strong><br><img src="docs/screenshots/global-threat-watch.png" alt="Global Threat Watch map and ransomware claim metrics" width="100%"></td>
+  </tr>
+</table>
+
 ## Run locally
 
 1. Install Node.js 20 or later.
